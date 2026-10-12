@@ -138,7 +138,3 @@ Este repositorio es solo un directorio de enlaces a servicios y herramientas de 
 - Quien use este toolkit es el único responsable de cómo lo usa.
 
 Algunos enlaces pueden dejar de funcionar con el tiempo, cambiar de condiciones o pasar a ser de pago. Si encuentras uno caído, abre un issue o un pull request.
-
-## Contribuir
-
-Las propuestas son bienvenidas: añade la herramienta al objeto `datos` en la carpeta y subcategoría que corresponda (con `[cuenta]` si pide registro) y abre un pull request.
