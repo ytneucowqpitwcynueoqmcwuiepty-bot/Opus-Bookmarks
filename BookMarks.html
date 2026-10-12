@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Toolkit OSINT / Pentest</title>
+<style>
+:root {
+  --fondo: #101216;
+  --caja: #171a20;
+  --borde: #2a2f3a;
+  --texto: #d9dde5;
+  --gris: #8b93a3;
+  --azul: #7aa7d9;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 14px/1.5 system-ui, sans-serif;
+}
+header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--fondo);
+  border-bottom: 1px solid var(--borde);
+  padding: 12px 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+h1 { font-size: 17px; margin: 0 8px 0 0; font-weight: 600; letter-spacing: .3px; }
+input[type=search] {
+  flex: 1;
+  min-width: 220px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--borde);
+  background: var(--caja);
+  color: var(--texto);
+}
+button {
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--borde);
+  background: var(--caja);
+  color: var(--texto);
+  cursor: pointer;
+}
+button:hover { border-color: var(--azul); }
+label, .cnt { color: var(--gris); font-size: 13px; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 60px; }
+details.folder {
+  background: var(--caja);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  margin: 10px 0;
+  padding: 4px 14px;
+}
+details.folder > summary { font-weight: 600; font-size: 15px; padding: 10px 0; cursor: pointer; }
+details.sub { margin: 4px 0 4px 14px; }
+details.sub > summary { color: var(--azul); cursor: pointer; padding: 4px 0; }
+ul { list-style: none; margin: 4px 0 10px 18px; padding: 0; columns: 2 280px; }
+li { padding: 2px 0; break-inside: avoid; }
+a { color: var(--texto); text-decoration: none; }
+a:hover { color: var(--azul); text-decoration: underline; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Toolkit OSINT / Pentest</h1>
+  <input type="search" id="q" placeholder="Buscar herramienta, URL o carpeta...">
+  <label><input type="checkbox" id="nokey"> Ocultar las que requieren cuenta</label>
+  <button id="btnOpen">Expandir</button>
+  <button id="btnClose">Colapsar</button>
+  <button id="btnExport">Exportar marcadores</button>
+  <span class="cnt" id="cnt"></span>
+</header>
+<main id="root"></main>
+
+<script>
+// [cuenta] = piden registro
+// TODO limpiar los que ya no van (redditsearch seguro)
+const datos = {
+
+"Anonimato y privacidad": {
+ "Identidades ficticias": [
+  ["Character Generator (bio)","https://www.character-generator.org.uk/bio/"],
+  ["This Resume Does Not Exist","https://thisresumedoesnotexist.com/"],
+  ["Full-contact names","https://names.igopaygo.com/people/full-contact"],
+  ["Fake Person Generator","https://www.fakepersongenerator.com/Index/generate"],
+  ["Fake Name Generator","https://www.fakenamegenerator.com/"],
+  ["Generated Photos","https://generated.photos/faces/front-facing"],
+  ["This Person Does Not Exist","https://this-person-does-not-exist.com/"],
+  ["Random User Generator","https://randomuser.me/"],
+  ["Random Address Generator","https://www.bestrandoms.com/random-address"]
+ ],
+ "Email temporal": [
+  ["10 Minute Mail","https://10minutemail.com/"],
+  ["Fake Mail Generator","https://www.fakemailgenerator.com/"],
+  ["Guerrilla Mail","https://www.guerrillamail.com/"],
+  ["Crazy Mailing","https://www.crazymailing.com/"],
+  ["Lista de proveedores (fepg)","http://www.fepg.net/providers.html"],
+  ["Temp-Mail","https://temp-mail.org/"],
+  ["YOPmail","https://yopmail.com/"],
+  ["Maildrop","https://maildrop.cc/"]
+ ],
+ "Alias de email": [
+  ["SimpleLogin [cuenta]","https://simplelogin.io/"],
+  ["Addy.io [cuenta]","https://addy.io/"],
+  ["Firefox Relay","https://relay.firefox.com/"],
+  ["DuckDuckGo Email Protection [cuenta]","https://duckduckgo.com/email/"],
+  ["Proton Mail [cuenta]","https://proton.me/mail"]
+ ],
+ "SMS online (casi ninguno va)": [
+  ["FreeOnlinePhone","https://www.freeonlinephone.org/"],
+  ["Receive-SMSs","https://receive-smss.com/"],
+  ["ReceiveFreeSMS","http://receivefreesms.com/"],
+  ["MyTrashMobile","https://es.mytrashmobile.com/"]
+ ],
+ "Fugas / fingerprint": [
+  ["BrowserLeaks","https://browserleaks.com/"],
+  ["Cover Your Tracks (EFF)","https://coveryourtracks.eff.org/"],
+  ["AmIUnique","https://amiunique.org/"],
+  ["IPLeak","https://ipleak.net/"],
+  ["DNS Leak Test","https://dnsleaktest.com/"]
+ ],
+ "Tor y VPN": [
+  ["Tor Project","https://www.torproject.org/"],
+  ["Tails","https://tails.net/"],
+  ["Whonix","https://www.whonix.org/"],
+  ["Mullvad (de pago)","https://mullvad.net/"],
+  ["Proton VPN [cuenta]","https://protonvpn.com/"],
+  ["Privacy Guides","https://www.privacyguides.org/"]
+ ],
+ "Cripto": [
+  ["Blockchair","https://blockchair.com/"],
+  ["Mempool.space","https://mempool.space/"],
+  ["Etherscan","https://etherscan.io/"],
+  ["WalletExplorer","https://www.walletexplorer.com/"],
+  ["Chainabuse","https://www.chainabuse.com/"]
+ ]
+},
+
+"Personas y empresas": {
+ "Emails": [
+  ["Hunter [cuenta]","https://hunter.io/"],
+  ["Email permutator (Google Sheet)","https://docs.google.com/spreadsheets/d/17URMtNmXfEZEW9oUL_taLpGaqTDcMkA79J8TRw4xnz8/edit#gid=0"],
+  ["Have I Been Pwned","https://haveibeenpwned.com/"],
+  ["Gravatar","https://es.gravatar.com/"],
+  ["Epieos","https://epieos.com/"],
+  ["Phonebook.cz [cuenta]","https://phonebook.cz/"]
+ ],
+ "Teléfonos": [
+  ["Truecaller [cuenta]","https://www.truecaller.com/"],
+  ["NumberingPlans","https://www.numberingplans.com/?page=analysis&sub=phonenr"],
+  ["Free Carrier Lookup","https://www.freecarrierlookup.com/"],
+  ["ListaSpam","https://www.listaspam.com/"],
+  ["Tellows","https://www.tellows.es/"],
+  ["PhoneInfoga","https://github.com/sundowndev/phoneinfoga"]
+ ],
+ "Usuarios": [
+  ["Instant Username","https://instantusername.com/"],
+  ["UserSearch.ai","https://usersearch.ai/"],
+  ["WhatsMyName","https://whatsmyname.app/"],
+  ["Namechk","https://namechk.com/"]
+ ],
+ "Buscadores de personas": [
+  ["Webmii","https://webmii.com/"],
+  ["Yasni","https://www.yasni.com/"],
+  ["PeekYou","https://www.peekyou.com/"],
+  ["That's Them","https://thatsthem.com/"],
+  ["TruePeopleSearch (solo EEUU)","https://www.truepeoplesearch.com/"],
+  ["Páginas Amarillas","https://www.paginasamarillas.es/"]
+ ],
+ "Redes sociales": [
+  ["Disboard (servidores Discord)","https://disboard.org/es/search"],
+  ["Discord ID","https://discord.id/"],
+  ["DiscordLookup","https://discordlookup.com/"],
+  ["Facebook Watch search [cuenta]","https://facebook.com/watch/search/"],
+  ["Flickr Map","https://www.flickr.com/map"],
+  ["Instagram locations [cuenta]","https://www.instagram.com/explore/locations/"],
+  ["Reddit User Analyser","https://reddit-user-analyser.netlify.app/"],
+  ["Reddit Search","https://redditsearch.io/"],
+  ["Snap Map","https://map.snapchat.com/"],
+  ["OSINT Combine Snapchat Viewer","https://www.osintcombine.com/snapchat-multi-viewer"],
+  ["Telemetr (Telegram)","https://telemetr.io/es/channels"],
+  ["TGStat (Telegram)","https://tgstat.com/"],
+  ["Lyzem (Telegram)","https://lyzem.com/"],
+  ["Social Bearing","https://socialbearing.com/"],
+  ["Social Searcher","https://www.social-searcher.com/"],
+  ["X Advanced Search [cuenta]","https://x.com/search-advanced"],
+  ["LinkedIn","https://www.linkedin.com/"]
+ ],
+ "Empresas": [
+  ["Registradores (sede)","https://sede.registradores.org/site/home"],
+  ["Registro Mercantil Central","https://www.rmc.es/"],
+  ["BORME (BOE)","https://www.boe.es/diario_borme/"],
+  ["Infocif","https://www.infocif.es/"],
+  ["Axesor","https://www.axesor.es/"],
+  ["PepperCat","https://peppercat.org/"],
+  ["OpenCorporates","https://opencorporates.com/"],
+  ["OpenSanctions","https://www.opensanctions.org/datasets/"],
+  ["OFAC Sanctions Search","https://sanctionssearch.ofac.treas.gov/"],
+  ["UK Companies House","https://find-and-update.company-information.service.gov.uk/"],
+  ["SEC EDGAR","https://www.sec.gov/edgar/search/"],
+  ["Plataforma de Contratación","https://contrataciondelestado.es/"]
+ ]
+},
+
+"Buscadores": {
+ "Generales": [
+  ["Google","https://www.google.com/"],
+  ["Google Alerts","https://www.google.com/alerts"],
+  ["Google Advanced Search","https://www.google.com/advanced_search"],
+  ["Bing","https://www.bing.com/"],
+  ["DuckDuckGo","https://duckduckgo.com/"],
+  ["Yahoo","https://search.yahoo.com/"],
+  ["Yandex","https://yandex.com/"],
+  ["Baidu","https://www.baidu.com/"],
+  ["Naver","https://www.naver.com/"],
+  ["Brave Search","https://search.brave.com/"],
+  ["Startpage","https://www.startpage.com/"],
+  ["Google Scholar","https://scholar.google.com/"]
+ ],
+ "Metabuscadores / onion": [
+  ["eTools","https://www.etools.ch/"],
+  ["Biznar","https://biznar.com/"],
+  ["Carrot2","https://search.carrot2.org/#/search/web"],
+  ["searx.space","https://searx.space/"],
+  ["Ahmia","https://ahmia.fi/"]
+ ],
+ "Archivo web": [
+  ["Internet Archive","https://archive.org/"],
+  ["Wayback Machine","https://web.archive.org/"],
+  ["Archive.today","https://archive.ph/"],
+  ["Memento Time Travel","https://timetravel.mementoweb.org/"]
+ ],
+ "Dorking": [
+  ["Google Hacking Database","https://www.exploit-db.com/google-hacking-database"],
+  ["DorkSearch","https://dorksearch.com/"],
+  ["Pentest-Tools Google Hacking","https://pentest-tools.com/information-gathering/google-hacking"],
+  ["GitHub dorks","https://github.com/techgaun/github-dorks"],
+  ["Operadores de Google (ahrefs)","https://ahrefs.com/blog/google-advanced-search-operators/"]
+ ],
+ "Código": [
+  ["PublicWWW","https://publicwww.com/"],
+  ["grep.app","https://grep.app/"],
+  ["searchcode","https://searchcode.com/"],
+  ["Pastebin","https://pastebin.com/"]
+ ]
+},
+
+"Geo y mapas": {
+ "Mapas": [
+  ["Google Maps","https://google.es/maps"],
+  ["Google Earth","https://earth.google.com/"],
+  ["Bing Maps","https://www.bing.com/maps/"],
+  ["Yandex Maps","https://yandex.com/maps"],
+  ["Baidu Maps","https://map.baidu.com/"],
+  ["OpenStreetMap","https://www.openstreetmap.org/"],
+  ["Overpass Turbo","https://overpass-turbo.eu/"],
+  ["BBBike Map Compare","https://mc.bbbike.org/"],
+  ["what3words","https://what3words.com/"],
+  ["MapChecking","https://www.mapchecking.com/"]
+ ],
+ "Satélite": [
+  ["Maxar Discover","https://discover.maxar.com/"],
+  ["Zoom Earth","https://zoom.earth/"],
+  ["ArcGIS Wayback","https://livingatlas.arcgis.com/wayback"],
+  ["Sentinel Playground","https://apps.sentinel-hub.com/sentinel-playground/"],
+  ["EO Browser","https://apps.sentinel-hub.com/eo-browser/"],
+  ["NASA Worldview","https://worldview.earthdata.nasa.gov/"],
+  ["NASA FIRMS (incendios)","https://firms.modaps.eosdis.nasa.gov/map/"]
+ ],
+ "Street view": [
+  ["Instant Street View","https://www.instantstreetview.com/"],
+  ["Mapillary","https://www.mapillary.com/"],
+  ["KartaView","https://kartaview.org/"]
+ ],
+ "Geolocalización": [
+  ["IP Fingerprints","https://www.ipfingerprints.com/"],
+  ["OpenCelliD","https://opencellid.org/"],
+  ["WiGLE","https://wigle.net/"],
+  ["GeoEstimation (TIB)","https://labs.tib.eu/geoestimation/"],
+  ["GPSJam","https://gpsjam.org/"]
+ ],
+ "Clima y desastres": [
+  ["GDACS","https://gdacs.org/"],
+  ["WAQI","https://waqi.info/"],
+  ["Windy","https://www.windy.com/"],
+  ["Earth Nullschool","https://earth.nullschool.net/"]
+ ],
+ "Sol y sombras": [
+  ["SunCalc","http://suncalc.net/"],
+  ["Sun Earth Tools","https://www.sunearthtools.com/"],
+  ["Time and Date","https://www.timeanddate.com/"]
+ ],
+ "España": [
+  ["IBERPIX (IGN)","https://www.ign.es/iberpix/visor"],
+  ["Sede Electrónica del Catastro","https://www.sedecatastro.gob.es/"],
+  ["IDEE","https://www.idee.es/"]
+ ]
+},
+
+"Infraestructura y red": {
+ "Whois y DNS": [
+  ["MarkMonitor Whois","https://whois-webform.markmonitor.com/whois/"],
+  ["ICANN Lookup","https://lookup.icann.org/"],
+  ["Who.is","https://who.is/"],
+  ["DomainHelp","https://domainhelp.com/"],
+  ["ViewDNS","https://viewdns.info/"],
+  ["DNSDumpster","https://dnsdumpster.com/"],
+  ["dnstwister","https://dnstwister.report/"],
+  ["MXToolbox","https://mxtoolbox.com/"],
+  ["Robtex","https://www.robtex.com/"],
+  ["SecurityTrails [cuenta]","https://securitytrails.com/"]
+ ],
+ "Subdominios": [
+  ["crt.sh","https://crt.sh/"],
+  ["RapidDNS","https://rapiddns.io/"],
+  ["Subdomain Finder C99","https://subdomainfinder.c99.nl/"],
+  ["HackerTarget","https://hackertarget.com/"]
+ ],
+ "Shodan y parecidos": [
+  ["Shodan [cuenta]","https://www.shodan.io/"],
+  ["Censys [cuenta]","https://censys.com/"],
+  ["FOFA [cuenta]","https://en.fofa.info/"],
+  ["ZoomEye [cuenta]","https://www.zoomeye.ai/"],
+  ["LeakIX","https://leakix.net/"],
+  ["GrayhatWarfare (buckets)","https://buckets.grayhatwarfare.com/"]
+ ],
+ "URLs y webs": [
+  ["urlscan.io","https://urlscan.io/"],
+  ["Cloudflare Radar Scan","https://radar.cloudflare.com/scan"],
+  ["Netcraft Site Report","https://sitereport.netcraft.com/"],
+  ["BuiltWith","https://builtwith.com/"],
+  ["Wappalyzer","https://www.wappalyzer.com/"]
+ ],
+ "TLS / cabeceras": [
+  ["SSL Labs","https://www.ssllabs.com/ssltest/"],
+  ["MDN HTTP Observatory","https://developer.mozilla.org/en-US/observatory"],
+  ["SecurityHeaders","https://securityheaders.com/"]
+ ],
+ "IPs": [
+  ["IPVoid","https://www.ipvoid.com/"],
+  ["IPinfo","https://ipinfo.io/"],
+  ["Hurricane Electric BGP","https://bgp.he.net/"],
+  ["BGPView","https://bgpview.io/"],
+  ["AbuseIPDB","https://www.abuseipdb.com/"],
+  ["Cisco Talos Reputation","https://talosintelligence.com/reputation_center"],
+  ["AlienVault OTX [cuenta]","https://otx.alienvault.com/"],
+  ["Sucuri SiteCheck","https://sitecheck.sucuri.net/"],
+  ["BrightCloud URL/IP Lookup","https://www.brightcloud.com/tools/url-ip-lookup.php"]
+ ]
+},
+
+"Malware y phishing": {
+ "Análisis": [
+  ["VirusTotal","https://www.virustotal.com/"],
+  ["Hybrid Analysis [cuenta]","https://www.hybrid-analysis.com/"],
+  ["ANY.RUN [cuenta]","https://app.any.run/"],
+  ["Triage [cuenta]","https://tria.ge/"],
+  ["URLhaus","https://urlhaus.abuse.ch/"],
+  ["MalwareBazaar","https://bazaar.abuse.ch/"]
+ ],
+ "Ransomware": [
+  ["ID Ransomware","https://id-ransomware.malwarehunterteam.com/"],
+  ["No More Ransom","https://www.nomoreransom.org/"]
+ ],
+ "Phishing": [
+  ["PhishTank","https://phishtank.org/"],
+  ["OpenPhish","https://openphish.com/"],
+  ["Google Safe Browsing","https://transparencyreport.google.com/safe-browsing/search"],
+  ["WhereGoes (redirecciones)","https://wheregoes.com/"]
+ ]
+},
+
+"Pentest": {
+ "CVEs y exploits": [
+  ["NVD","https://nvd.nist.gov/"],
+  ["Exploit-DB","https://www.exploit-db.com/"],
+  ["CISA KEV","https://www.cisa.gov/known-exploited-vulnerabilities-catalog"],
+  ["CVEdetails","https://www.cvedetails.com/"],
+  ["Vulners","https://vulners.com/"],
+  ["GitHub Advisories","https://github.com/advisories"],
+  ["Calculadora CVSS","https://www.first.org/cvss/calculator/3.1"],
+  ["Packet Storm","https://packetstormsecurity.com/"],
+  ["AttackerKB","https://attackerkb.com/"],
+  ["Nuclei Templates","https://github.com/projectdiscovery/nuclei-templates"]
+ ],
+ "Guías y chuletas": [
+  ["HackTricks","https://book.hacktricks.wiki/"],
+  ["The Hacker Recipes","https://www.thehacker.recipes/"],
+  ["PayloadsAllTheThings","https://github.com/swisskyrepo/PayloadsAllTheThings"],
+  ["GTFOBins","https://gtfobins.github.io/"],
+  ["LOLBAS","https://lolbas-project.github.io/"],
+  ["ired.team","https://www.ired.team/"],
+  ["PentestBook (six2dez)","https://pentestbook.six2dez.com/"],
+  ["PentestMonkey","https://pentestmonkey.net/"],
+  ["SecLists","https://github.com/danielmiessler/SecLists"],
+  ["OWASP WSTG","https://owasp.org/www-project-web-security-testing-guide/"],
+  ["OWASP Cheat Sheets","https://cheatsheetseries.owasp.org/"],
+  ["PortSwigger Web Security","https://portswigger.net/web-security"],
+  ["MITRE ATT&CK","https://attack.mitre.org/"],
+  ["Kali Tools","https://www.kali.org/tools/"],
+  ["HackerOne Hacktivity","https://hackerone.com/hacktivity"],
+  ["can-i-take-over-xyz","https://github.com/EdOverflow/can-i-take-over-xyz"]
+ ],
+ "Utilidades": [
+  ["CyberChef","https://gchq.github.io/CyberChef/"],
+  ["JWT.io","https://jwt.io/"],
+  ["Regex101","https://regex101.com/"],
+  ["ExplainShell","https://explainshell.com/"],
+  ["Webhook.site","https://webhook.site/"],
+  ["Interactsh","https://app.interactsh.com/"],
+  ["CrackStation","https://crackstation.net/"],
+  ["Hashes.com","https://hashes.com/en/decrypt/hash"],
+  ["dCode","https://www.dcode.fr/en"],
+  ["RevShells","https://www.revshells.com/"]
+ ],
+ "Labs y CTF": [
+  ["TryHackMe [cuenta]","https://tryhackme.com/"],
+  ["Hack The Box [cuenta]","https://www.hackthebox.com/"],
+  ["Root-Me [cuenta]","https://www.root-me.org/"],
+  ["VulnHub","https://www.vulnhub.com/"],
+  ["OverTheWire","https://overthewire.org/wargames/"],
+  ["CTFtime","https://ctftime.org/"],
+  ["DVWA","https://github.com/digininja/DVWA"],
+  ["OWASP Juice Shop","https://owasp-juice.shop/"]
+ ],
+ "Bug bounty": [
+  ["HackerOne [cuenta]","https://hackerone.com/"],
+  ["Bugcrowd [cuenta]","https://www.bugcrowd.com/"],
+  ["Intigriti [cuenta]","https://www.intigriti.com/"],
+  ["YesWeHack [cuenta]","https://www.yeswehack.com/"]
+ ]
+},
+
+"Para instalar": {
+ "Pentest": [
+  ["Kali Linux","https://www.kali.org/"],
+  ["Burp Suite Community","https://portswigger.net/burp/communitydownload"],
+  ["OWASP ZAP","https://www.zaproxy.org/"],
+  ["Nmap","https://nmap.org/"],
+  ["Wireshark","https://www.wireshark.org/"],
+  ["Metasploit","https://www.metasploit.com/"],
+  ["sqlmap","https://sqlmap.org/"],
+  ["ffuf","https://github.com/ffuf/ffuf"],
+  ["Nuclei","https://github.com/projectdiscovery/nuclei"],
+  ["subfinder","https://github.com/projectdiscovery/subfinder"],
+  ["httpx","https://github.com/projectdiscovery/httpx"],
+  ["testssl.sh","https://testssl.sh/"]
+ ],
+ "OSINT": [
+  ["theHarvester","https://github.com/laramies/theHarvester"],
+  ["Recon-ng","https://github.com/lanmaster53/recon-ng"],
+  ["SpiderFoot","https://github.com/smicallef/spiderfoot"],
+  ["Maltego [cuenta]","https://www.maltego.com/"],
+  ["Sherlock","https://github.com/sherlock-project/sherlock"],
+  ["Maigret","https://github.com/soxoj/maigret"],
+  ["Holehe","https://github.com/megadose/holehe"],
+  ["GHunt","https://github.com/mxrch/GHunt"],
+  ["ExifTool","https://exiftool.org/"],
+  ["yt-dlp","https://github.com/yt-dlp/yt-dlp"]
+ ],
+ "Otros": [
+  ["Tor Browser","https://www.torproject.org/download/"],
+  ["KeePassXC","https://keepassxc.org/"],
+  ["Obsidian","https://obsidian.md/"],
+  ["Gephi","https://gephi.org/"]
+ ]
+},
+
+"Imágenes": {
+ "Búsqueda inversa": [
+  ["Google Images","https://images.google.com/"],
+  ["Google Lens","https://lens.google.com/"],
+  ["Bing Images","https://www.bing.com/images/"],
+  ["Yahoo Images","https://images.search.yahoo.com/"],
+  ["TinEye","https://tineye.com/"],
+  ["Yandex Images","https://www.yandex.com/images/"]
+ ],
+ "Metadatos": [
+  ["ImgOps","https://imgops.com/"],
+  ["Metadata2Go","https://www.metadata2go.com/view-metadata"],
+  ["ImageForensic","https://www.imageforensic.org/"],
+  ["Jimpl","https://jimpl.com/"],
+  ["Verexif","https://www.verexif.com/"]
+ ],
+ "Forense": [
+  ["FotoForensics","https://fotoforensics.com/"],
+  ["Forensically","https://29a.ch/photo-forensics/"],
+  ["Shadow Calculator","http://shadowcalculator.eu/"],
+  ["Yandex OCR","https://translate.yandex.com/ocr"],
+  ["Juxtapose","https://juxtapose.knightlab.com/"],
+  ["Am I Real? (caras hechas con IA)","https://seintpl.github.io/AmIReal/"]
+ ],
+ "Reconocimiento facial": [
+  ["PimEyes","https://pimeyes.com/"],
+  ["Search4Faces","https://search4faces.com/"]
+ ],
+ "Edición": [
+  ["Photopea","https://www.photopea.com/"],
+  ["Upscale.media","https://www.upscale.media/"]
+ ]
+},
+
+"Verificación y noticias": {
+ "Fact-checking": [
+  ["Newtral","https://www.newtral.es/"],
+  ["Maldita.es","https://maldita.es/"],
+  ["AFP Fact Check","https://factcheck.afp.com/"],
+  ["Full Fact","https://fullfact.org/"],
+  ["Snopes","https://www.snopes.com/"],
+  ["Google Fact Check Explorer","https://toolbox.google.com/factcheck/explorer"],
+  ["EUvsDisinfo","https://euvsdisinfo.eu/"],
+  ["Bot Sentinel","https://botsentinel.com/"]
+ ],
+ "Sesgo mediático": [
+  ["AllSides","https://www.allsides.com/media-bias"],
+  ["Media Bias/Fact Check","https://mediabiasfactcheck.com/country-profiles/"],
+  ["Ad Fontes Media Bias Chart","https://adfontesmedia.com/interactive-media-bias-chart/"]
+ ],
+ "Noticias y datos": [
+  ["Google News","https://news.google.com/"],
+  ["Google Trends","https://trends.google.com/trends"],
+  ["GDELT","https://www.gdeltproject.org/"],
+  ["Newspaper Map","https://newspapermap.com/"],
+  ["ACLED","https://acleddata.com/"],
+  ["Liveuamap","https://liveuamap.com/"],
+  ["Global Terrorism Database","https://www.start.umd.edu/gtd/"]
+ ],
+ "Vídeos y fotos": [
+  ["Bellingcat Toolkit","https://bellingcat.gitbook.io/toolkit"],
+  ["Bellingcat Resources","https://www.bellingcat.com/resources/"],
+  ["YouTube DataViewer","https://citizenevidence.org/2014/07/01/youtube-dataviewer/"]
+ ]
+},
+
+"Vídeo y webcams": {
+ "Buscadores de vídeo": [
+  ["Google Videos","https://www.google.com/videohp"],
+  ["Bing Videos","https://www.bing.com/videos/"],
+  ["Yahoo Video","https://video.search.yahoo.com/"],
+  ["YouTube","https://www.youtube.com/"],
+  ["Vimeo","https://vimeo.com/search"],
+  ["Dailymotion","https://www.dailymotion.com/"],
+  ["Internet Archive Movies","https://archive.org/details/opensource_movies"],
+  ["Filmot (busca en los subtítulos)","https://filmot.com/"]
+ ],
+ "Análisis de vídeo": [
+  ["YouTube GeoFind","https://mattw.io/youtube-geofind/"],
+  ["YouTube Data Tools","https://tools.digitalmethods.net/netvizz/youtube/"],
+  ["Watch Frame by Frame","http://www.watchframebyframe.com/"],
+  ["DetURL","http://deturl.com/"],
+  ["Hadzy","https://hadzy.com/"]
+ ],
+ "Webcams": [
+  ["Airport Webcams","https://airportwebcams.net/"],
+  ["Sunders","https://sunders.uber.space/"],
+  ["Windy Webcams","https://www.windy.com/webcams"],
+  ["SkylineWebcams","https://www.skylinewebcams.com/"],
+  ["EarthCam","https://www.earthcam.com/"]
+ ]
+},
+
+"Transporte": {
+ "Aviones": [
+  ["FlightAware","https://flightaware.com/live/"],
+  ["Flightradar24","https://www.flightradar24.com/"],
+  ["ADS-B Exchange","https://globe.adsbexchange.com/"],
+  ["OpenSky Aircraft DB","https://opensky-network.org/aircraft-database/"],
+  ["Planespotters","https://www.planespotters.net/"],
+  ["JetPhotos","https://www.jetphotos.com/"],
+  ["FAA Registry","https://registry.faa.gov/aircraftinquiry/"]
+ ],
+ "Barcos": [
+  ["MarineTraffic","https://www.marinetraffic.com/"],
+  ["VesselFinder","https://www.vesselfinder.com/"],
+  ["Global Fishing Watch","https://globalfishingwatch.org/map"],
+  ["MyShipTracking","https://www.myshiptracking.com/"]
+ ],
+ "Trenes": [
+  ["GeOps Mobility","https://mobility.portal.geops.io/"],
+  ["OpenRailwayMap","https://www.openrailwaymap.org/"],
+  ["Rome2rio","https://www.rome2rio.com/"]
+ ],
+ "Satélites": [
+  ["N2YO","https://www.n2yo.com/"],
+  ["Heavens-Above","https://www.heavens-above.com/"]
+ ]
+},
+
+"Leaks": {
+ "Documentos": [
+  ["ICIJ Offshore Leaks","https://offshoreleaks.icij.org/"],
+  ["WikiLeaks","https://wikileaks.org/"],
+  ["Distributed Denial of Secrets","https://ddosecrets.com/"],
+  ["OCCRP Aleph","https://aleph.occrp.org/"],
+  ["Cryptome","https://cryptome.org/"]
+ ],
+ "Credenciales": [
+  ["BreachDirectory","https://breachdirectory.org/"],
+  ["Intelligence X [cuenta]","https://intelx.io/"],
+  ["DeHashed [cuenta] (de pago)","https://www.dehashed.com/"]
+ ]
+},
+
+"Informes y gráficos": {
+ "Diagramas y timelines": [
+  ["diagrams.net","https://app.diagrams.net/"],
+  ["Excalidraw","https://excalidraw.com/"],
+  ["time.graphics","https://time.graphics/es/"],
+  ["Knight Lab Timeline","https://timeline.knightlab.com/#make"]
+ ],
+ "Datos": [
+  ["DataReportal","https://datareportal.com/"],
+  ["OCCRP VIS","https://vis.occrp.org/"],
+  ["RAWGraphs","https://app.rawgraphs.io/"]
+ ],
+ "Informes de pentest": [
+  ["SysReptor","https://sysreptor.com/"],
+  ["Public Pentesting Reports","https://github.com/juliocesarfort/public-pentesting-reports"],
+  ["PentestReports.com","https://pentestreports.com/"]
+ ]
+},
+
+"Otras recopilaciones": {
+ "Directorios": [
+  ["OSINT Framework","https://osintframework.com/"],
+  ["OSINT Map (cipher387)","https://cipher387.github.io/osintmap/"],
+  ["IntelTechniques Tools","https://inteltechniques.com/tools/"],
+  ["OSINT.link","https://osint.link/"],
+  ["OSINT Combine","https://www.osintcombine.com/"],
+  ["Awesome OSINT","https://github.com/jivoi/awesome-osint"],
+  ["Awesome Pentest","https://github.com/enaqx/awesome-pentest"],
+  ["Personal Security Checklist","https://digital-defense.io/"]
+ ],
+ "Capturas": [
+  ["Page2Images","https://www.page2images.com/"]
+ ]
+}
+
+};
+
+const q = document.getElementById('q'), nokey = document.getElementById('nokey');
+const root = document.getElementById('root'), cnt = document.getElementById('cnt');
+
+function pintar() {
+  const busca = q.value.trim().toLowerCase(), ocultar = nokey.checked;
+  root.innerHTML = '';
+  let total = 0;
+  for (const [carpeta, subs] of Object.entries(datos)) {
+    const det = document.createElement('details');
+    det.className = 'folder';
+    det.open = !!busca; // al buscar se abre todo
+    const cont = document.createElement('div');
+    let n = 0;
+    for (const [sub, links] of Object.entries(subs)) {
+      const items = links.filter(([t, u]) => {
+        if (ocultar && t.includes('[cuenta]')) return false;
+        return !busca || (t + ' ' + u + ' ' + sub + ' ' + carpeta).toLowerCase().includes(busca);
+      });
+      if (!items.length) continue;
+      n += items.length;
+      const ds = document.createElement('details');
+      ds.className = 'sub';
+      ds.open = !!busca;
+      const s = document.createElement('summary');
+      s.textContent = sub + ' (' + items.length + ')';
+      ds.appendChild(s);
+      const ul = document.createElement('ul');
+      for (const [t, u] of items) {
+        const li = document.createElement('li'), a = document.createElement('a');
+        a.href = u; a.textContent = t; a.title = u;
+        a.target = '_blank'; a.rel = 'noopener noreferrer';
+        li.appendChild(a);
+        ul.appendChild(li);
+      }
+      ds.appendChild(ul);
+      cont.appendChild(ds);
+    }
+    if (!n) continue;
+    total += n;
+    const s = document.createElement('summary');
+    s.textContent = carpeta + ' (' + n + ')';
+    det.appendChild(s);
+    det.appendChild(cont);
+    root.appendChild(det);
+  }
+  cnt.textContent = total + ' enlaces';
+}
+
+function escapar(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// mismo formato que sale al exportar marcadores en firefox/chrome, asi se puede importar tal cual
+function exportar() {
+  const ts = Math.floor(Date.now() / 1000);
+  let html = '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n';
+  html += '    <DT><H3 ADD_DATE="' + ts + '">Toolkit OSINT Pentest</H3>\n    <DL><p>\n';
+  for (const [carpeta, subs] of Object.entries(datos)) {
+    html += '        <DT><H3 ADD_DATE="' + ts + '">' + escapar(carpeta) + '</H3>\n        <DL><p>\n';
+    for (const [sub, links] of Object.entries(subs)) {
+      html += '            <DT><H3 ADD_DATE="' + ts + '">' + escapar(sub) + '</H3>\n            <DL><p>\n';
+      for (const [t, u] of links) {
+        html += '                <DT><A HREF="' + escapar(u) + '" ADD_DATE="' + ts + '">' + escapar(t) + '</A>\n';
+      }
+      html += '            </DL><p>\n';
+    }
+    html += '        </DL><p>\n';
+  }
+  html += '    </DL><p>\n</DL><p>\n';
+
+  const blob = new Blob([html], {type: 'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'marcadores-osint-pentest.html';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000); // si lo libero al momento a veces no descarga
+}
+
+q.addEventListener('input', pintar);
+nokey.addEventListener('change', pintar);
+document.getElementById('btnOpen').onclick = () => document.querySelectorAll('details').forEach(d => d.open = true);
+document.getElementById('btnClose').onclick = () => document.querySelectorAll('details').forEach(d => d.open = false);
+document.getElementById('btnExport').onclick = exportar;
+pintar();
+</script>
+</body>
+</html>
